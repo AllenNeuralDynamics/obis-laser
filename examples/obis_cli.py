@@ -2,7 +2,7 @@
 """Connect to an Obis LS laser and enable/disable it at a set power level."""
 
 
-from obis_laser import ObisLS
+from obis_laser import ObisLS, LSModulationType
 import argparse
 
 
@@ -24,16 +24,14 @@ if __name__ == "__main__":
     my_obis = ObisLS(args.port)
     print("done.")
 
+    if args.wait:
+        print("  Waiting for warm-boot to complete.")
+        my_obis.wait_until_ready()
+    my_obis.set_modulation_mode(LSModulationType.ANALOG_MODULATION)
     if args.enable:
         print("Enabling laser output.")
-        if args.wait:
-            print("  Waiting for warm-boot to complete.")
-            my_obis.wait_until_ready()
         my_obis.enable()
     elif args.disable:
         print("Disabling laser output.")
-        if args.wait:
-            print("  Waiting for warm-boot to complete.")
-            my_obis.wait_until_ready()
         my_obis.disable()
 

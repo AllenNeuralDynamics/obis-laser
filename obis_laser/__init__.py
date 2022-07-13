@@ -1,1 +1,2 @@
-from .obis import ObisLS, ObisLX
+# Put everything in the top scope
+from .obis import *
