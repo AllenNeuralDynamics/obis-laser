@@ -177,7 +177,7 @@ class Obis:
         reply = self.get_state_setting(SystemStateQuery.SOURCE_TEMPERATURE_BASEPLATE)
         return float(reply.strip('C'))
 
-    def enable_laser(self):
+    def enable(self):
         """Enable the laser once it is ready (i.e: not warming up or faulted).
 
         Note: this command does not provide any feedback. If enabled while
@@ -186,6 +186,14 @@ class Obis:
         """
         return self.set_operational_setting(OperationalCmd.LASER_OUTPUT_STATE,
                                             BoolStrEnum.ON.value)
+
+    def disable(self):
+        """Disable the laser.
+
+        Note: this command does not provide any feeback.
+        """
+        return self.set_operational_setting(OperationalCmd.LASER_OUTPUT_STATE,
+                                            BoolStrEnum.OFF.value)
 
     def get_system_status(self) -> SystemStatus:
         """Return the status of the laser as an enum."""
@@ -207,13 +215,6 @@ class Obis:
                 raise RuntimeError("Error: device is in a fault state.")
             state = self.get_system_status()
 
-    def disable_laser(self):
-        """Disable the laser.
-
-        Note: this command does not provide any feeback.
-        """
-        return self.set_operational_setting(OperationalCmd.LASER_OUTPUT_STATE,
-                                            BoolStrEnum.OFF.value)
 
     def warm_boot(self):
         """Tell the laser to warm boot."""

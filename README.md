@@ -1,6 +1,6 @@
-# OBIS Driver
+# OBIS Laser Driver
 
-A python driver for an OBIS laser
+A minimal python driver for an OBIS laser
 
 ## Connection Overview
 ![](./docs/pics/vibratome_controller_wiring_diagram.png)

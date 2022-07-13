@@ -4,7 +4,7 @@ with open("README.md", "r", newline="", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="obis",
+    name="obis_laser",
     version="0.0.1",
     author="Joshua Vasquez",
     author_email="joshua.vasquez@alleninstitute.org",
