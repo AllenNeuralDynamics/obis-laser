@@ -257,7 +257,7 @@ class Obis:
     def _writecmd(self, cmd: StrEnum, cmd_arg_val: str ) -> str:
         """Write a command. Confirm that the device responds with an OK."""
         cmd_bytes = f"{cmd.value} {cmd_arg_val}\r\n".encode('ascii')
-        print(f"Writing: {cmd_bytes}")
+        #print(f"Writing: {cmd_bytes}")
         self.ser.write(cmd_bytes)
         conf = self.ser.readline().decode('utf8').rstrip('\r\n')
         assert conf == 'OK', \
@@ -288,9 +288,9 @@ class ObisLS(Obis):
         # Modes fall into 2 categories: internal or external.
         # CW type modes (only one for LS type) are internal.
         if mode == LSModulationType.CW_POWER:
-            self._writecmd(OperationalCmd.SET_MODE_INTERNAL_CW, mode)
+            self._writecmd(OperationalCmd.MODE_INTERNAL_CW, mode)
         else:
-            self._writecmd(OperationalCmd.SET_MODE_EXTERNAL, mode)
+            self._writecmd(OperationalCmd.MODE_EXTERNAL, mode)
 
     def get_modulation_mode(self) -> LSModulationType:
         # Read from device, and convert the string into one of the modes.
@@ -303,9 +303,9 @@ class ObisLX(Obis):
         # Modes fall into 2 categories: internal or external.
         # CW type modes (only one for LS type) are internal.
         if mode in {LXModulationType.CW_POWER, LXModulationType.CW_CURRENT}:
-            self._writecmd(OperationalCmd.SET_MODE_INTERNAL_CW, mode)
+            self._writecmd(OperationalCmd.MODE_INTERNAL_CW, mode)
         else:
-            self._writecmd(OperationalCmd.SET_MODE_EXTERNAL, mode)
+            self._writecmd(OperationalCmd.MODE_EXTERNAL, mode)
 
     def get_modulation_mode(self) -> LXModulationType:
         # Read from device, and convert the string into one of the modes.
