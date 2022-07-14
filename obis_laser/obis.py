@@ -138,22 +138,24 @@ class SystemStatus(StrEnum):
     # what is ______4_ and ______0_  as in 'CE000448' and 'CE000048'
     # what is 'C8001408'?
 
+
 # Modulation Setting (Operating Mode) depends on Model.
 # See pg 143 in datasheet Part 1.
 class LSModulationType(StrEnum):
     CW_POWER = "CWP"
-    DIGITAL_MODULATION = "DIGITAL"
-    ANALOG_MODULATION = "ANALOG"
-    MIXED_MODULATION = "MIXED"
+    DIGITAL = "DIGITAL"
+    ANALOG = "ANALOG"
+    MIXED = "MIXED"
+
 
 class LXModulationType(StrEnum):
     CW_POWER = "CWP"
     CW_CURRENT = "CWC"
-    DIGITAL_MODULATION = "DIGITAL"
+    DIGITAL = "DIGITAL"
     DIGITAL_POWER = "DIGSO"
-    ANALOG_MODULATION = "ANALOG"
+    ANALOG = "ANALOG"
     MIXED_POWER = "MIXSO"
-    MIXED_MODULATION = "MIXED"
+    MIXED = "MIXED"
 
 
 class Obis:

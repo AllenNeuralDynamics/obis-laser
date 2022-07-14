@@ -10,13 +10,13 @@ if __name__ == "__main__":
     parser  = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--enable', action='store_true',
-        help="Enable the vibratome head output")
+                       help="Enable the obis laser output")
     group.add_argument('--disable', action='store_true',
-        help="Disable the vibratome head output")
+                       help="Disable the obis laser output")
     parser.add_argument('--wait', type=bool, default=True, required=False,
-        help="Wait for the laser to finish warm booting before exiting.")
+                        help="Wait for the laser to finish warm booting before exiting.")
     parser.add_argument('--port', type=str, default='/dev/ttyACM0',
-        help="port name. Leave blank for default.")
+                        help="port name. Leave blank for default.")
 
     args = parser.parse_args()
 
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     if args.wait:
         print("  Waiting for warm-boot to complete.")
         my_obis.wait_until_ready()
-    my_obis.set_modulation_mode(LSModulationType.ANALOG_MODULATION)
+    my_obis.set_modulation_mode(LSModulationType.ANALOG)
     if args.enable:
         print("Enabling laser output.")
         my_obis.enable()
