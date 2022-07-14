@@ -28,6 +28,7 @@ if __name__ == "__main__":
         print("  Waiting for warm-boot to complete.")
         my_obis.wait_until_ready()
     my_obis.set_modulation_mode(LSModulationType.ANALOG)
+    my_obis.set_analog_input_impedance(AnalogInputImpedanceType.TWO_THOUSAND_OHM)
     if args.enable:
         print("Enabling laser output.")
         my_obis.enable()

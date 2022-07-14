@@ -23,7 +23,7 @@ class SessionControlCmd(StrEnum):
     SYSTEM_COMMUNICATE_HANDSHAKING = "SYST:COMM:HAND"
     SYSTEM_COMMUNICATE_PROMPT = "SYST:COMM:PROM"
     SYSTEM_AUTOSTART = "SYST:AUT"
-    SYSTEM_INFORMATION_AMODULATION_TYPE = "SYST:INF:AMOD:TYP"
+    SYSTEM_INFO_AMODULATION_TYPE = "SYST:INF:AMOD:TYP"
 
     SYSTEM_INDICATOR_LASER = "SYST:IND:LAS"
 
@@ -34,7 +34,7 @@ class SessionControlQuery(StrEnum):
     SYSTEM_COMMUNICATE_HANDSHAKING = "SYST:COMM:HAND?"
     SYSTEM_COMMUNICATE_PROMPT = "SYST:COMM:PROM?"
     SYSTEM_AUTOSTART = "SYST:AUT?"
-    SYSTEM_INFORMATION_AMODULATION_TYPE = "SYST:INF:AMOD:TYP?"
+    SYSTEM_INFO_AMODULATION_TYPE = "SYST:INF:AMOD:TYP?"
 
     SYSTEM_STATUS = "SYST:STAT?"
     SYSTEM_FAULT = "SYST:FAUL?"
@@ -139,6 +139,11 @@ class SystemStatus(StrEnum):
     # what is 'C8001408'?
 
 
+# Analog input impedance setting is model-agnostic.
+class AnalogInputImpedanceType(StrEnum):
+    FIFTY_OHM = "1"
+    TWO_THOUSAND_OHM = "2"
+
 # Modulation Setting (Operating Mode) depends on Model.
 # See pg 143 in datasheet Part 1.
 class LSModulationType(StrEnum):
@@ -221,6 +226,11 @@ class Obis:
     def warm_boot(self):
         """Tell the laser to warm boot."""
         self._writecmd(IEEESCPI.WARM_BOOT, "")
+
+    def set_analog_input_impedance(self, ohms: AnalogInputImpedanceType):
+        """Set the input impedance of the SMB analog input."""
+        self.set_session_ctrl_setting(
+            SessionControlCmd.SYSTEM_INFO_AMODULATION_TYPE, ohms)
 
     def get_modulation_mode(self) -> StrEnum:
         """Get the laser's modulation mode."""
