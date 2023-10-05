@@ -46,6 +46,7 @@ class SessionControlQuery(StrEnum):
 class SysInfoCmd(StrEnum):
     USER = "SYST:INF:USER"
     FIELD_CALIBRATION_DATE = "SYST:INF:FCD"
+    POWER = "SYST:INF:POW"
 
 
 class SysInfoQuery(StrEnum):
@@ -167,12 +168,16 @@ class Obis:
 
     BAUDRATE = 9600
 
-    def __init__(self, port: str):
+    def __init__(self, port, prefix=None, modulation_mode: LSModulationType = LSModulationType.CW_POWER):
         """Constructor. Connect to the device."""
-        self.ser = serial.Serial(port, baudrate=self.__class__.BAUDRATE)
+
+        self.prefix = prefix
+        self.ser = serial.Serial(port, baudrate=self.__class__.BAUDRATE) if self.prefix == None else port
         # Flush OS buffers.
         self.ser.reset_output_buffer()
         self.ser.reset_input_buffer()
+
+        self.set_modulation_mode(modulation_mode)
 
     @property  # TODO: make a @cached_property
     def wavelength(self):
@@ -222,6 +227,22 @@ class Obis:
                 raise RuntimeError("Error: device is in a fault state.")
             state = self.get_system_status()
 
+    def disable_cdrh(self):
+        """Disable emission delay"""
+        self.set_operational_setting(OperationalCmd.EMISSION_DELAY,
+                                     BoolStrEnum.OFF.value)
+
+    def get_setpoint(self):
+        """Return setpoint of laser"""
+        return float(self.get_operational_setting(OperationalQuery.POWER_LEVEL_AMPLITUDE)) * 1000
+
+    def set_setpoint(self, value):
+        """Set power of laser"""
+        self.set_operational_setting(OperationalCmd.POWER_LEVEL_AMPLITUDE, str(value/1000))
+
+    def get_max_setpoint(self):
+        """Get max setpoint of laser"""
+        return float(self.get_sys_info_setting(SysInfoQuery.SOURCE_POWER_HIGH)) *1000
 
     def warm_boot(self):
         """Tell the laser to warm boot."""
@@ -245,6 +266,9 @@ class Obis:
     def get_sys_info_setting(self, sys_info_query: SysInfoQuery):
         return self._readcmd(sys_info_query)
 
+    def set_sys_info_setting(self, sys_info_cmd: SysInfoCmd, value):
+        return self._writecmd(sys_info_cmd, value)
+
     def get_session_ctrl_setting(self, setting: SessionControlQuery):
         return self._readcmd(setting)
 
@@ -266,8 +290,9 @@ class Obis:
 
     def _writecmd(self, cmd: StrEnum, cmd_arg_val: str ) -> str:
         """Write a command. Confirm that the device responds with an OK."""
-        cmd_bytes = f"{cmd.value} {cmd_arg_val}\r\n".encode('ascii')
-        #print(f"Writing: {cmd_bytes}")
+        cmd_bytes = f"{self.prefix} {cmd.value} {cmd_arg_val}\r\n".encode('ascii') if self.prefix != None \
+            else f"{cmd.value} {cmd_arg_val}\r\n".encode('ascii')
+        # print(f"Writing: {cmd_bytes}")
         self.ser.write(cmd_bytes)
         conf = self.ser.readline().decode('utf8').rstrip('\r\n')
         assert conf == 'OK', \
@@ -279,18 +304,18 @@ class Obis:
         """Read a setting and return reply as string without \r\n."""
         # Every read replies with '<some_relevant_response>\r\nOK\r\n'
         # We must read 2 lines to throw out the 'OK\r\n'
-        cmd_bytes = f"{cmd.value}\r\n".encode('ascii')
+        cmd_bytes = f"{self.prefix} {cmd.value}\r\n".encode('ascii') if self.prefix != None \
+            else f"{cmd.value}\r\n".encode('ascii')
         # print(f"sending: {repr(cmd_bytes)}")
         self.ser.write(cmd_bytes)
         val = self.ser.readline().decode('utf8').rstrip('\r\n')
-        # print(f"received: {val}")
+        #print(f"received: {val}")
         conf = self.ser.readline().decode('utf8').rstrip('\r\n')
         assert conf == 'OK', \
             "Error: did not receive an OK when attempting to " \
             f"write: {repr(cmd_bytes)}.\r\n" \
-            f"Instead received: {conf}"
+            f"Instead received: {val}"
         return val
-
 
 class ObisLS(Obis):
 
