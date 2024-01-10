@@ -2,7 +2,7 @@
 """Serial device driver for OBIS LS/LX lasers."""
 
 import sys
-import serial
+from serial import Serial
 from enum import Enum
 from time import sleep
 
@@ -108,9 +108,7 @@ class BoolStrEnum(StrEnum):
 
 
 class SystemStatus(StrEnum):
-    # KEY OUT: CE000___
-    # KEY ON: C8001___
-    # KEY ON on Powerup: C8000___ (This needs to be cleared.)
+
     KEY_OUT_INT_WARMUP = 'CE000100'
     KEY_OUT_INT_STANDBY = 'CE000008'
     KEY_OUT_EXT_WARMUP = 'CE000500'
@@ -133,12 +131,6 @@ class SystemStatus(StrEnum):
     KEY_ARMED_EARLY_EXT_WARMUP = 'C8000500' # 'CE000500'
     KEY_ARMED_EARLY_LASER_READY_INT_MODE = 'C8000008'
     KEY_ARMED_EARLY_LASER_READY_EXT_MODE = 'C8000408'
-    # what is 'C8001442' and 'C8001042'?
-    # what is: 'C8001008' # warm up done with key on. key was just flipped off and then back on. 5-second delay?
-    # what is: 'CC000008' # ?? was Fault RED ??
-    # what is ______4_ and ______0_  as in 'CE000448' and 'CE000048'
-    # what is 'C8001408'?
-
 
 # Analog input impedance setting is model-agnostic.
 class AnalogInputImpedanceType(StrEnum):
@@ -163,21 +155,25 @@ class LXModulationType(StrEnum):
     MIXED_POWER = "MIXSO"
     MIXED = "MIXED"
 
+OBIS_COM_SETUP = \
+    {
+        "baudrate": 9600,
+
+    }
+
 
 class Obis:
 
     BAUDRATE = 9600
 
-    def __init__(self, port, prefix=None, modulation_mode: LSModulationType = LSModulationType.CW_POWER):
+    def __init__(self, port, prefix=None):
         """Constructor. Connect to the device."""
 
-        self.prefix = prefix
-        self.ser = serial.Serial(port, baudrate=self.__class__.BAUDRATE) if self.prefix == None else port
+        self.prefix = f'{prefix} ' if prefix is not None else ''
+        self.ser = Serial(port, **OBIS_COM_SETUP) if type(port) != Serial else port
         # Flush OS buffers.
         self.ser.reset_output_buffer()
         self.ser.reset_input_buffer()
-
-        self.set_modulation_mode(modulation_mode)
 
     @property  # TODO: make a @cached_property
     def wavelength(self):
@@ -226,40 +222,61 @@ class Obis:
             elif state.value[-1] == '1':  # Check for fault states.
                 raise RuntimeError("Error: device is in a fault state.")
             state = self.get_system_status()
+    @property
+    def cdrh(self):
+        status = self.get_operational_setting(OperationalCmd.EMISSION_DELAY)
+        return BoolStrEnum(status)
 
-    def disable_cdrh(self):
-        """Disable emission delay"""
+    @cdrh.setter
+    def cdrh(self, status: BoolStrEnum):
         self.set_operational_setting(OperationalCmd.EMISSION_DELAY,
-                                     BoolStrEnum.OFF.value)
+                                     status.value)
 
-    def get_setpoint(self):
-        """Return setpoint of laser"""
-        return float(self.get_operational_setting(OperationalQuery.POWER_LEVEL_AMPLITUDE)) * 1000
+    @property
+    def power_setpoint(self):
+        """Returns current power of laser in mW"""
+        power_W = self.get_operational_setting(OperationalQuery.POWER_LEVEL_AMPLITUDE)
+        return float(power_W)*1000
 
-    def set_setpoint(self, value):
-        """Set power of laser"""
-        self.set_operational_setting(OperationalCmd.POWER_LEVEL_AMPLITUDE, str(value/1000))
+    @power_setpoint.setter
+    def power_setpoint(self, power_mW):
+        """set to setpoint of laser power in mW"""
+        self.set_operational_setting(OperationalCmd.POWER_LEVEL_AMPLITUDE, str(power_mW/1000))
 
-    def get_max_setpoint(self):
-        """Get max setpoint of laser"""
+    @property
+    def max_power(self):
+        """Returns maximum power of laser in mW"""
         return float(self.get_sys_info_setting(SysInfoQuery.SOURCE_POWER_HIGH)) *1000
+
+    @property
+    def min_power(self):
+        """Returns maximum power of laser in mW"""
+        return float(self.get_sys_info_setting(SysInfoQuery.SOURCE_POWER_LOW)) * 1000
+
 
     def warm_boot(self):
         """Tell the laser to warm boot."""
         self._writecmd(IEEESCPI.WARM_BOOT, "")
 
-    def set_analog_input_impedance(self, ohms: AnalogInputImpedanceType):
+    @property
+    def analog_input_impedance(self, ohms: AnalogInputImpedanceType):
+        """get the input impedance of the SMB analog input."""
+        return self.get_session_ctrl_setting(
+            SessionControlCmd.SYSTEM_INFO_AMODULATION_TYPE)
+    @analog_input_impedance.setter
+    def analog_input_impedance(self, ohms: AnalogInputImpedanceType):
         """Set the input impedance of the SMB analog input."""
         self.set_session_ctrl_setting(
             SessionControlCmd.SYSTEM_INFO_AMODULATION_TYPE, ohms)
 
-    def get_modulation_mode(self) -> StrEnum:
-        """Get the laser's modulation mode."""
-        raise NotImplementedError
+    @property
+    def external_mode(self):
+        mode = self.get_operational_setting(OperationalQuery.OPERATING_MODE)
+        if mode == 'DIGITAL' or mode == 'ANALOG' or mode == 'MIXED':
+            return 'ON'
+        else:
+            return 'OFF'
 
-    def set_modulation_mode(self, mode: StrEnum):
-        """set the laser's modulation type."""
-        raise NotImplementedError
 
     # ---- Utility funcs ----
 
@@ -319,7 +336,11 @@ class Obis:
 
 class ObisLS(Obis):
 
-    def set_modulation_mode(self, mode: LSModulationType):
+    @property
+    def modulation_mode(self):
+        return self._readcmd(OperationalQuery.OPERATING_MODE)
+    @modulation_mode.setter
+    def modulation_mode(self, mode: LSModulationType):
         # Modes fall into 2 categories: internal or external.
         # CW type modes (only one for LS type) are internal.
         if mode == LSModulationType.CW_POWER:
@@ -327,25 +348,23 @@ class ObisLS(Obis):
         else:
             self._writecmd(OperationalCmd.MODE_EXTERNAL, mode)
 
-    def get_modulation_mode(self) -> LSModulationType:
-        # Read from device, and convert the string into one of the modes.
-        return LSModulationType(self._readcmd(OperationalQuery.OPERATING_MODE))
-
 
 class ObisLX(Obis):
 
-    def set_modulation_mode(self, mode: LXModulationType):
+    @property
+    def modulation_mode(self):
+        return self._readcmd(OperationalQuery.OPERATING_MODE)
+
+    @modulation_mode.setter
+    def modulation_mode(self, mode: LSModulationType):
+        # Modes fall into 2 categories: internal or external.
+        # CW type modes (only one for LS type) are internal.
         # Modes fall into 2 categories: internal or external.
         # CW type modes (only one for LS type) are internal.
         if mode in {LXModulationType.CW_POWER, LXModulationType.CW_CURRENT}:
             self._writecmd(OperationalCmd.MODE_INTERNAL_CW, mode)
         else:
             self._writecmd(OperationalCmd.MODE_EXTERNAL, mode)
-
-    def get_modulation_mode(self) -> LXModulationType:
-        # Read from device, and convert the string into one of the modes.
-        return LXModulationType(self._readcmd(OperationalQuery.OPERATING_MODE))
-
 
 if __name__ == "__main__":
     from inpromptu import Inpromptu
