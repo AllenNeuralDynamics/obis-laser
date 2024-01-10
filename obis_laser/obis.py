@@ -161,10 +161,7 @@ OBIS_COM_SETUP = \
 
     }
 
-
 class Obis:
-
-    BAUDRATE = 9600
 
     def __init__(self, port, prefix=None):
         """Constructor. Connect to the device."""
@@ -224,13 +221,14 @@ class Obis:
             state = self.get_system_status()
     @property
     def cdrh(self):
-        status = self.get_operational_setting(OperationalCmd.EMISSION_DELAY)
-        return BoolStrEnum(status)
+        status = self.get_operational_setting(OperationalQuery.EMISSION_DELAY)
+        return status
 
     @cdrh.setter
-    def cdrh(self, status: BoolStrEnum):
+    def cdrh(self, status: BoolStrEnum or str):
+        value = status.value if type(status) == BoolStrEnum else status
         self.set_operational_setting(OperationalCmd.EMISSION_DELAY,
-                                     status.value)
+                                     value)
 
     @property
     def power_setpoint(self):
@@ -259,7 +257,7 @@ class Obis:
         self._writecmd(IEEESCPI.WARM_BOOT, "")
 
     @property
-    def analog_input_impedance(self, ohms: AnalogInputImpedanceType):
+    def analog_input_impedance(self):
         """get the input impedance of the SMB analog input."""
         return self.get_session_ctrl_setting(
             SessionControlCmd.SYSTEM_INFO_AMODULATION_TYPE)
@@ -365,6 +363,16 @@ class ObisLX(Obis):
             self._writecmd(OperationalCmd.MODE_INTERNAL_CW, mode)
         else:
             self._writecmd(OperationalCmd.MODE_EXTERNAL, mode)
+
+class ObisLaserBox:
+
+    def __init__(self, port):
+        """Class for the Obis Laser Box which contains LS and LX lasers.
+        No direct communication is needed but useful in order to open serial port and
+        share between lasers"""
+        self.ser = Serial(port, **OBIS_COM_SETUP)
+
+
 
 if __name__ == "__main__":
     from inpromptu import Inpromptu
